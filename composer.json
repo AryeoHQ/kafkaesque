@@ -36,6 +36,7 @@
         "spatie/laravel-package-tools": "^1.16"
     },
     "require-dev": {
+        "cweagans/composer-patches": "^1.7",
         "larastan/larastan": "^2.9||^3.0",
         "laravel/pint": "^1.14",
         "nunomaduro/collision": "^8.1.1||^7.10.0",
@@ -67,6 +68,7 @@
     "config": {
         "sort-packages": true,
         "allow-plugins": {
+            "cweagans/composer-patches": true,
             "phpstan/extension-installer": true
         }
     },
@@ -77,6 +79,11 @@
             ],
             "aliases": {
                 "Kafkaesque": "Aryeo\\Kafkaesque\\Facades\\Kafkaesque"
+            }
+        },
+        "patches": {
+            "orchestra/canvas": {
+                "Fix createBaseMigration signature for Laravel 10–12": "patches/orchestra_canvas_create_base_migration.patch"
             }
         }
     },

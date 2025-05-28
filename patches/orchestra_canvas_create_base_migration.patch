@@ -1,9 +1,0 @@
---- vendor/orchestra/canvas/src/Console/NotificationTableCommand.php
-+++ vendor/orchestra/canvas/src/Console/NotificationTableCommand.php
-@@ -37,7 +37,7 @@ class NotificationTableCommand extends MigrationGeneratorCommand
--    protected function createBaseMigration()
-+    protected function createBaseMigration($table = 'notifications')
-    {
--        return $this->createBaseMigrationUsingCanvas('notifications');
-+        return $this->createBaseMigrationUsingCanvas($table);
-    }

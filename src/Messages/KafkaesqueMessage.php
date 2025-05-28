@@ -13,8 +13,7 @@ abstract class KafkaesqueMessage
     public function __construct(
         protected readonly string $key,
         protected readonly KafkaesqueSchema $body,
-    ) {
-    }
+    ) {}
 
     public function getBody(): KafkaesqueSchema
     {

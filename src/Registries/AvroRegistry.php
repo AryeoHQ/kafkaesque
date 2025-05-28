@@ -24,9 +24,13 @@ use Junges\Kafka\Message\Serializers\AvroSerializer;
 class AvroRegistry extends KafkaesqueRegistry
 {
     protected CachedRegistry $cachedRegistry;
+
     protected RecordSerializer $recordSerializer;
+
     protected AvroDeserializer $deserializer;
+
     protected AvroSchemaRegistry $registry;
+
     protected AvroSerializer $serializer;
 
     public function __construct(
@@ -40,7 +44,7 @@ class AvroRegistry extends KafkaesqueRegistry
                     ])
                 )
             ),
-            cacheAdapter: new AvroObjectCacheAdapter()
+            cacheAdapter: new AvroObjectCacheAdapter
         );
 
         $this->registry = new AvroSchemaRegistry(

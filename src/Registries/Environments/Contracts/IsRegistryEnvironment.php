@@ -2,6 +2,4 @@
 
 namespace Aryeo\Kafkaesque\Registries\Environments\Contracts;
 
-interface IsRegistryEnvironment
-{
-}
+interface IsRegistryEnvironment {}

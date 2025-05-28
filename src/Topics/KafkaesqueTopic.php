@@ -39,8 +39,8 @@ abstract class KafkaesqueTopic
      */
     public function produce(KafkaesqueMessage $message): void
     {
-        if (!$this instanceof IsProducible) {
-            throw new Exception();
+        if (! $this instanceof IsProducible) {
+            throw new Exception;
         }
 
         $this->getProducer()
@@ -55,7 +55,7 @@ abstract class KafkaesqueTopic
      */
     public function consume(): void
     {
-        if (!$this instanceof IsConsumable) {
+        if (! $this instanceof IsConsumable) {
             throw new Exception('Not consumable');
         }
 

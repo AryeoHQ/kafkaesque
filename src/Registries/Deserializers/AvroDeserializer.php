@@ -15,8 +15,7 @@ readonly class AvroDeserializer implements AvroMessageDeserializer
     public function __construct(
         private AvroRegistry $registry,
         private RecordSerializer $recordSerializer
-    ) {
-    }
+    ) {}
 
     public function getRegistry(): AvroSchemaRegistry
     {

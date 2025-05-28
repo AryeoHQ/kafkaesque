@@ -2,7 +2,6 @@
 
 namespace Aryeo\Kafkaesque;
 
-use Aryeo\Kafkaesque\Commands\KafkaesqueCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -17,9 +16,6 @@ class KafkaesqueServiceProvider extends PackageServiceProvider
          */
         $package
             ->name('kafkaesque')
-            ->hasConfigFile()
-            ->hasViews()
-            ->hasMigration('create_kafkaesque_table')
-            ->hasCommand(KafkaesqueCommand::class);
+            ->hasConfigFile();
     }
 }

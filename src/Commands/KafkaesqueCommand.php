@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace Aryeo\Kafkaesque\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class KafkaesqueCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'kafkaesque';
 
     public $description = 'My command';
 

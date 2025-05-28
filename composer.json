@@ -1,18 +1,23 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "aryeo/kafkaesque",
+    "description": "An ergonomic interface for producing and consuming Kafka messages.",
     "keywords": [
-        ":vendor_name",
+        "aryeo",
         "laravel",
-        ":package_slug"
+        "kafkaesque"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/aryeohq/kafkaesque",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
-            "role": "Developer"
+            "name": "Deven Jahnke",
+            "email": "devenj@zillowgroup.com",
+            "role": "Principal Software Development Engineer"
+        },
+        {
+            "name": "Cory Rosenwald",
+            "email": "coryr@zillowgroup.com",
+            "role": "Fullstack Software Development Engineer"
         }
     ],
     "require": {
@@ -30,18 +35,17 @@
         "pestphp/pest-plugin-laravel": "^3.0",
         "phpstan/extension-installer": "^1.3||^2.0",
         "phpstan/phpstan-deprecation-rules": "^1.1||^2.0",
-        "phpstan/phpstan-phpunit": "^1.3||^2.0",
-        "spatie/laravel-ray": "^1.35"
+        "phpstan/phpstan-phpunit": "^1.3||^2.0"
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src/",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories/"
+            "Aryeo\\Kafkaesque\\": "src/",
+            "Aryeo\\Kafkaesque\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests/",
+            "Aryeo\\Kafkaesque\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -63,10 +67,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "VendorName\\Skeleton\\SkeletonServiceProvider"
+                "Aryeo\\Kafkaesque\\KafkaesqueServiceProvider"
             ],
             "aliases": {
-                "Skeleton": "VendorName\\Skeleton\\Facades\\Skeleton"
+                "Kafkaesque": "Aryeo\\Kafkaesque\\Facades\\Kafkaesque"
             }
         }
     },

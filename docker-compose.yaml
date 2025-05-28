@@ -1,0 +1,23 @@
+networks:
+  app:
+    driver: bridge
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+      target: local
+    environment:
+      COMPOSER_CACHE_DIR: "/tmp/.cache"
+      COMPOSER_HOME:
+    networks:
+      - app
+    tty: true
+    volumes:
+      - .:/usr/src/app
+      - composer:/tmp/.cache
+
+volumes:
+  composer:
+  pgsql:

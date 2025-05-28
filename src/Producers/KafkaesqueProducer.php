@@ -27,7 +27,7 @@ abstract class KafkaesqueProducer
             $registry = $topic->getRegistry();
             $schema = $message->getBody();
 
-            if ($registry instanceof AvroRegistry && $schema instanceof IsAvroSchema) {
+            if ($schema instanceof IsAvroSchema) {
                 $registry->registerSchema(
                     topic: $topic,
                     schema: $schema

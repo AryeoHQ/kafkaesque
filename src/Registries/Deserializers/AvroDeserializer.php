@@ -45,19 +45,13 @@ readonly class AvroDeserializer implements AvroMessageDeserializer
 
         $schemaId = unpack('N', substr($message->getBody(), 1, 4))[1];
 
-        dump($schemaId);
-
         $schema = $this->registry->getSchemaForId($schemaId);
-
-        dump($schema);
 
         $data = $this->recordSerializer
             ->decodeMessage(
                 binaryMessage: $message->getBody(),
                 readersSchema: $schema
             );
-
-        dump($data);
 
         return $data;
     }

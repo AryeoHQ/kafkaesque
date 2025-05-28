@@ -77,6 +77,7 @@ Please review [our security policy](../../security/policy) on how to report secu
 ## Credits
 
 - [Deven Jahnke](https://github.com/devenjahnke)
+- [Cory Rosenwald](https://github.com/coryrose1)
 - [All Contributors](../../contributors)
 
 ## License

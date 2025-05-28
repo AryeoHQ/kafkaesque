@@ -3,7 +3,6 @@
 namespace Aryeo\Kafkaesque\Producers;
 
 use Aryeo\Kafkaesque\Messages\KafkaesqueMessage;
-use Aryeo\Kafkaesque\Registries\AvroRegistry;
 use Aryeo\Kafkaesque\Schemas\Contracts\IsAvroSchema;
 use Aryeo\Kafkaesque\Topics\Contracts\HasAvroRegistry;
 use Aryeo\Kafkaesque\Topics\Contracts\IsProducible;

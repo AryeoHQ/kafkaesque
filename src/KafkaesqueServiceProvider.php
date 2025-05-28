@@ -17,9 +17,6 @@ class KafkaesqueServiceProvider extends PackageServiceProvider
          */
         $package
             ->name('kafkaesque')
-            ->hasConfigFile()
-            ->hasViews()
-            ->hasMigration('create_kafkaesque_table')
-            ->hasCommand(KafkaesqueCommand::class);
+            ->hasConfigFile();
     }
 }

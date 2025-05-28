@@ -2,9 +2,9 @@
 
 namespace Aryeo\Kafkaesque;
 
+use Aryeo\Kafkaesque\Commands\KafkaesqueCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Aryeo\Kafkaesque\Commands\KafkaesqueCommand;
 
 class KafkaesqueServiceProvider extends PackageServiceProvider
 {

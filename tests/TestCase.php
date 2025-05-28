@@ -2,9 +2,9 @@
 
 namespace Aryeo\Kafkaesque\Tests;
 
+use Aryeo\Kafkaesque\KafkaesqueServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Aryeo\Kafkaesque\KafkaesqueServiceProvider;
 
 class TestCase extends Orchestra
 {

@@ -11,8 +11,8 @@ abstract class KafkaesqueMessage
     protected array $defaultTopics;
 
     public function __construct(
-        protected readonly string $key,
         protected readonly KafkaesqueSchema $body,
+        protected readonly ?string $key = null,
     ) {}
 
     public function getBody(): KafkaesqueSchema
@@ -20,7 +20,7 @@ abstract class KafkaesqueMessage
         return $this->body;
     }
 
-    public function getKey(): string
+    public function getKey(): ?string
     {
         return $this->key;
     }

@@ -19,6 +19,13 @@ Kafkaesque abstracts the complexity of Kafka message handling by providing:
 
 The package follows Laravel conventions and integrates seamlessly with your existing Laravel applications.
 
+## Core Concept
+
+Kafkaesque uses a simple flow:
+
+**For Consuming:** `Topic->consume()` → `Consumer` → `Message->handle()`
+**For Producing:** `Message->produce()` → `Topic` → `Producer`
+
 ## Installation
 
 ### Requirements
@@ -69,7 +76,7 @@ php artisan vendor:publish --tag="kafkaesque-config"
 
 ## Configuration
 
-The package uses Laravel's environment configuration. Configure your Kafka connection in your `.env` file:
+Configure your Kafka connection in your `.env` file:
 
 ```env
 KAFKA_BROKERS=localhost:9092
@@ -83,13 +90,9 @@ KAFKA_SASL_PASSWORD=
 KAFKA_SCHEMA_REGISTRY_URL=http://localhost:8081
 ```
 
-## Creating Messages
+## Schemas
 
-Messages in Kafkaesque extend the `KafkaesqueMessage` class and use schemas for type safety.
-
-### 1. Create a Schema
-
-First, create a schema by extending `KafkaesqueSchema`:
+Create message schemas using Spatie's Laravel Data:
 
 ```php
 <?php
@@ -109,9 +112,36 @@ class UserRegisteredSchema extends KafkaesqueSchema
 }
 ```
 
-### 2. Create a Message
+For Avro schema support, implement the `IsAvroSchema` contract:
 
-Create a message class that uses your schema:
+```php
+use Aryeo\Kafkaesque\Schemas\Contracts\IsAvroSchema;
+use Aryeo\Kafkaesque\Registries\Environments\Contracts\IsRegistryEnvironment;
+
+class UserRegisteredSchema extends KafkaesqueSchema implements IsAvroSchema
+{
+    // ... constructor
+
+    public function getSubject(): string
+    {
+        return 'user-registered-value';
+    }
+
+    public function getVersion(IsRegistryEnvironment $environment): int
+    {
+        return match ($environment->getName()) {
+            'production' => 2,
+            default => 1,
+        };
+    }
+}
+```
+
+## Messages
+
+### Producer Messages
+
+Create messages that can be sent to topics:
 
 ```php
 <?php
@@ -137,49 +167,67 @@ class UserRegisteredMessage extends KafkaesqueMessage
 }
 ```
 
-### 3. Using Avro Schemas (Optional)
+**Send messages:**
 
-For Avro schema support, implement the `IsAvroSchema` contract:
+```php
+$schema = new UserRegisteredSchema(
+    userId: '12345',
+    email: 'user@example.com',
+    name: 'John Doe',
+    registeredAt: now()
+);
+
+$message = new UserRegisteredMessage($schema, key: '12345');
+$message->produce(); // Sends to configured topics via their producers
+```
+
+### Consumer Messages
+
+Create messages that handle incoming data:
 
 ```php
 <?php
 
-namespace App\Kafka\Schemas;
+namespace App\Kafka\Messages;
 
-use Aryeo\Kafkaesque\Schemas\KafkaesqueSchema;
-use Aryeo\Kafkaesque\Schemas\Contracts\IsAvroSchema;
-use Aryeo\Kafkaesque\Registries\Environments\Contracts\IsRegistryEnvironment;
+use Aryeo\Kafkaesque\Messages\KafkaesqueMessage;
+use App\Kafka\Schemas\VersionOne;
+use App\Jobs\SyncZillow3dHomeTour;
 
-class UserRegisteredSchema extends KafkaesqueSchema implements IsAvroSchema
+class AryeoListingAdded extends KafkaesqueMessage
 {
     public function __construct(
-        public readonly string $userId,
-        public readonly string $email,
-        public readonly string $name,
-        public readonly \DateTimeInterface $registeredAt
-    ) {}
-
-    public function getSubject(): string
-    {
-        return 'user-registered-value';
+        VersionOne $body,
+        ?string $key = null
+    ) {
+        parent::__construct($body, $key);
     }
 
-    public function getVersion(IsRegistryEnvironment $environment): int
+    public function handle(): void
     {
-        return match ($environment->getName()) {
-            'production' => 2,
-            'staging' => 2,
-            default => 1,
-        };
+        if (!$this->shouldHandle()) {
+            return;
+        }
+
+        SyncZillow3dHomeTour::dispatch(
+            listingId: $this->body->listingId,
+            vrModelId: $this->body->vrModelId
+        );
+    }
+
+    protected function shouldHandle(): bool
+    {
+        return !is_null($this->body->listingId) && 
+               !is_null($this->body->vrModelId);
     }
 }
 ```
 
-## Kafka Message Production
+## Topics
 
-### 1. Create a Topic
+Topics manage environment-aware naming and route messages between producers/consumers.
 
-Topics in Kafkaesque implement environment-aware naming and can be marked as producible:
+### Producible Topic
 
 ```php
 <?php
@@ -188,11 +236,15 @@ namespace App\Kafka\Topics;
 
 use Aryeo\Kafkaesque\Topics\KafkaesqueTopic;
 use Aryeo\Kafkaesque\Topics\Contracts\IsProducible;
-use Aryeo\Kafkaesque\Producers\KafkaesqueProducer;
 use App\Kafka\Producers\UserEventsProducer;
 
 class UserEventsTopic extends KafkaesqueTopic implements IsProducible
 {
+    public function getProducer(): KafkaesqueProducer
+    {
+        return resolve(UserEventsProducer::class);
+    }
+
     protected function getLocalName(): string
     {
         return 'local.user-events';
@@ -217,17 +269,62 @@ class UserEventsTopic extends KafkaesqueTopic implements IsProducible
     {
         return 'test.user-events';
     }
+}
+```
 
-    public function getProducer(): KafkaesqueProducer
+### Consumable Topic
+
+```php
+<?php
+
+namespace App\Kafka\Topics;
+
+use Aryeo\Kafkaesque\Topics\KafkaesqueTopic;
+use Aryeo\Kafkaesque\Topics\Contracts\IsConsumable;
+use App\Kafka\Consumers\StreamzConsumer;
+use Junges\Kafka\Contracts\ConsumerMessage;
+use Junges\Kafka\Contracts\MessageConsumer;
+
+class SparkleTopic extends KafkaesqueTopic implements IsConsumable
+{
+    public function getConsumer(): KafkaesqueConsumer
     {
-        return resolve(UserEventsProducer::class);
+        return resolve(StreamzConsumer::class);
+    }
+
+    // ... environment name methods
+
+    public function handleMessage(ConsumerMessage $message, MessageConsumer $consumer): void
+    {
+        $body = VersionOne::from($message->getBody());
+
+        // Route to specific message handlers
+        $messageClass = match ($body->phase) {
+            SparklePhase::AryeoListingAdded => AryeoListingAdded::class,
+            SparklePhase::AryeoListingDeleted => AryeoListingDeleted::class,
+            default => null,
+        };
+
+        if ($messageClass) {
+            resolve($messageClass, [
+                'body' => $body,
+                'key' => $message->getKey(),
+            ])->handle();
+        }
     }
 }
 ```
 
-### 2. Create a Producer
+**Consume messages:**
 
-Extend `KafkaesqueProducer` and configure it with the underlying Kafka producer:
+```php
+// In an Artisan command
+resolve(SparkleTopic::class)->consume(); // Uses configured consumer to process messages
+```
+
+## Producers
+
+Create producers by extending `KafkaesqueProducer`. For detailed configuration options, see the [mateusjunges/laravel-kafka documentation](https://github.com/mateusjunges/laravel-kafka).
 
 ```php
 <?php
@@ -242,146 +339,20 @@ class UserEventsProducer extends KafkaesqueProducer
     public function __construct()
     {
         $this->producer = Kafka::producer()
-            ->withConfigOptions([
-                'bootstrap.servers' => config('kafka.brokers'),
-                'security.protocol' => config('kafka.security_protocol'),
-            ]);
+            ->withBrokers(config('kafka.brokers'))
+            ->withSasl(
+                username: config('kafka.username'),
+                password: config('kafka.password'),
+                mechanisms: 'SCRAM-SHA-256',
+                securityProtocol: 'sasl_ssl',
+            );
     }
 }
 ```
 
-### 3. Producing Messages
+## Consumers
 
-Produce messages using the fluent interface:
-
-```php
-use App\Kafka\Messages\UserRegisteredMessage;
-use App\Kafka\Schemas\UserRegisteredSchema;
-
-// Create and produce a message
-$schema = new UserRegisteredSchema(
-    userId: '12345',
-    email: 'user@example.com',
-    name: 'John Doe',
-    registeredAt: now()
-);
-
-$message = new UserRegisteredMessage($schema, key: '12345');
-
-// Produce to default topics
-$message->produce();
-
-// Or produce to specific topics
-$message->onTopics([
-    UserEventsTopic::class,
-    AnotherTopic::class,
-])->produce();
-```
-
-### 4. Avro Registry Integration
-
-For topics using Avro schemas, implement the `HasAvroRegistry` contract:
-
-```php
-<?php
-
-namespace App\Kafka\Topics;
-
-use Aryeo\Kafkaesque\Topics\KafkaesqueTopic;
-use Aryeo\Kafkaesque\Topics\Contracts\IsProducible;
-use Aryeo\Kafkaesque\Topics\Contracts\HasAvroRegistry;
-use Aryeo\Kafkaesque\Registries\KafkaesqueRegistry;
-use App\Kafka\Registries\ProductionAvroRegistry;
-
-class UserEventsTopic extends KafkaesqueTopic implements IsProducible, HasAvroRegistry
-{
-    // ... topic name methods ...
-
-    public function getRegistry(): KafkaesqueRegistry
-    {
-        return resolve(ProductionAvroRegistry::class);
-    }
-
-    public function getProducer(): KafkaesqueProducer
-    {
-        return resolve(UserEventsProducer::class);
-    }
-}
-```
-
-## Kafka Message Consumption
-
-### 1. Create a Consumable Topic
-
-Mark your topic as consumable and implement the message handling logic:
-
-```php
-<?php
-
-namespace App\Kafka\Topics;
-
-use Aryeo\Kafkaesque\Topics\KafkaesqueTopic;
-use Aryeo\Kafkaesque\Topics\Contracts\IsConsumable;
-use Aryeo\Kafkaesque\Consumers\KafkaesqueConsumer;
-use App\Kafka\Consumers\UserEventsConsumer;
-use Junges\Kafka\Contracts\ConsumerMessage;
-use Junges\Kafka\Contracts\MessageConsumer;
-
-class UserEventsTopic extends KafkaesqueTopic implements IsConsumable
-{
-    // ... topic name methods ...
-
-    public function getConsumer(): KafkaesqueConsumer
-    {
-        return resolve(UserEventsConsumer::class);
-    }
-
-    public function handleMessage(ConsumerMessage $message, MessageConsumer $consumer): void
-    {
-        $messageBody = $message->getBody();
-        $messageKey = $message->getKey();
-        $headers = $message->getHeaders();
-        
-        // Process the message
-        logger()->info('Received user event', [
-            'key' => $messageKey,
-            'body' => $messageBody,
-            'headers' => $headers,
-        ]);
-
-        // Handle different message types
-        match ($messageBody['eventType'] ?? null) {
-            'user.registered' => $this->handleUserRegistered($messageBody),
-            'user.updated' => $this->handleUserUpdated($messageBody),
-            default => logger()->warning('Unknown event type', $messageBody),
-        };
-    }
-
-    private function handleUserRegistered(array $data): void
-    {
-        // Process user registration
-        User::create([
-            'external_id' => $data['userId'],
-            'email' => $data['email'],
-            'name' => $data['name'],
-        ]);
-    }
-
-    private function handleUserUpdated(array $data): void
-    {
-        // Process user update
-        User::where('external_id', $data['userId'])
-            ->update([
-                'email' => $data['email'],
-                'name' => $data['name'],
-            ]);
-    }
-}
-```
-
-### 2. Create a Consumer
-
-Extend `KafkaesqueConsumer` and configure it:
+Create consumers by extending `KafkaesqueConsumer`. For detailed configuration options, see the [mateusjunges/laravel-kafka documentation](https://github.com/mateusjunges/laravel-kafka).
 
 ```php
 <?php
@@ -391,92 +362,26 @@ namespace App\Kafka\Consumers;
 use Aryeo\Kafkaesque\Consumers\KafkaesqueConsumer;
 use Junges\Kafka\Facades\Kafka;
 
-class UserEventsConsumer extends KafkaesqueConsumer
+class StreamzConsumer extends KafkaesqueConsumer
 {
     public function __construct()
     {
         $this->consumerBuilder = Kafka::consumer()
-            ->withConsumerGroupId(config('kafka.consumer_group_id'))
-            ->withConfigOptions([
-                'bootstrap.servers' => config('kafka.brokers'),
-                'security.protocol' => config('kafka.security_protocol'),
-                'auto.offset.reset' => 'earliest',
-            ]);
+            ->withBrokers(config('kafka.brokers'))
+            ->withSasl(
+                username: config('kafka.username'),
+                password: config('kafka.password'),
+                mechanisms: 'SCRAM-SHA-256',
+                securityProtocol: 'sasl_ssl',
+            )
+            ->withConsumerGroupId(config('kafka.consumer_group_id'));
     }
 }
 ```
 
-### 3. Consuming Messages
+## Avro Registry Setup
 
-Create an Artisan command to consume messages:
-
-```php
-<?php
-
-namespace App\Console\Commands;
-
-use Illuminate\Console\Command;
-use App\Kafka\Topics\UserEventsTopic;
-
-class ConsumeUserEvents extends Command
-{
-    protected $signature = 'kafka:consume-user-events';
-    protected $description = 'Consume user events from Kafka';
-
-    public function handle(): void
-    {
-        $this->info('Starting to consume user events...');
-        
-        $topic = resolve(UserEventsTopic::class);
-        $topic->consume();
-    }
-}
-```
-
-Register the command and run it:
-
-```bash
-php artisan kafka:consume-user-events
-```
-
-### 4. Error Handling
-
-Implement robust error handling in your message handlers:
-
-```php
-public function handleMessage(ConsumerMessage $message, MessageConsumer $consumer): void
-{
-    try {
-        $messageBody = $message->getBody();
-        
-        // Validate message structure
-        if (!isset($messageBody['eventType'])) {
-            throw new InvalidArgumentException('Missing eventType in message');
-        }
-
-        // Process message
-        $this->processMessage($messageBody);
-        
-        // Acknowledge successful processing
-        $consumer->acknowledge($message);
-        
-    } catch (\Exception $e) {
-        logger()->error('Failed to process message', [
-            'error' => $e->getMessage(),
-            'message' => $message->getBody(),
-        ]);
-        
-        // Handle error (retry logic, dead letter queue, etc.)
-        $this->handleError($message, $e, $consumer);
-    }
-}
-```
-
-## Advanced Usage
-
-### Custom Registry Environments
-
-Create custom registry environments for different deployment scenarios:
+When using Avro schemas, create a registry environment:
 
 ```php
 <?php
@@ -494,33 +399,54 @@ class ProductionRegistryEnvironment implements IsAvroRegistryEnvironment
 
     public function getName(): string
     {
-        return 'production';
+        return app()->environment();
     }
 }
 ```
 
-### Batch Message Production
-
-Produce multiple messages efficiently:
+Then implement `HasAvroRegistry` on your topic:
 
 ```php
-$messages = collect($users)->map(function ($user) {
-    $schema = new UserRegisteredSchema(
-        userId: $user->id,
-        email: $user->email,
-        name: $user->name,
-        registeredAt: $user->created_at
-    );
-    
-    return new UserRegisteredMessage($schema, key: $user->id);
-});
+use Aryeo\Kafkaesque\Topics\Contracts\HasAvroRegistry;
+use Aryeo\Kafkaesque\Registries\AvroRegistry;
 
-$messages->each->produce();
+class UserEventsTopic extends KafkaesqueTopic implements IsProducible, HasAvroRegistry
+{
+    public function getRegistry(): KafkaesqueRegistry
+    {
+        return new AvroRegistry(
+            environment: new ProductionRegistryEnvironment()
+        );
+    }
+
+    // ... other methods
+}
 ```
 
-### Testing
+## Running Consumers
 
-Test your Kafka implementations using Laravel's testing utilities:
+Create Artisan commands to run your consumers:
+
+```php
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use App\Kafka\Topics\SparkleTopic;
+
+class ConsumeSparkeEvents extends Command
+{
+    protected $signature = 'kafka:consume-sparkle-events';
+
+    public function handle(): void
+    {
+        resolve(SparkleTopic::class)->consume();
+    }
+}
+```
+
+## Testing
 
 ```php
 <?php
@@ -533,7 +459,7 @@ use App\Kafka\Schemas\UserRegisteredSchema;
 
 class UserRegisteredMessageTest extends TestCase
 {
-    public function test_user_registered_message_creation(): void
+    public function test_message_creation(): void
     {
         $schema = new UserRegisteredSchema(
             userId: '12345',
@@ -545,30 +471,9 @@ class UserRegisteredMessageTest extends TestCase
         $message = new UserRegisteredMessage($schema, key: '12345');
 
         $this->assertEquals('12345', $message->getKey());
-        $this->assertInstanceOf(UserRegisteredSchema::class, $message->getBody());
         $this->assertEquals('test@example.com', $message->getBody()->email);
     }
 }
-```
-
-## Testing
-
-Run the package tests:
-
-```bash
-composer test
-```
-
-Run static analysis:
-
-```bash
-composer analyse
-```
-
-Fix code style issues:
-
-```bash
-composer format
 ```
 
 ## Changelog

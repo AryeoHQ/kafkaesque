@@ -193,7 +193,7 @@ class UserEventsTopic extends KafkaesqueTopic implements IsProducible
 {
     public function getProducer(): KafkaesqueProducer
     {
-        return resolve(UserEventsProducer::class);
+        return new UserEventsProducer();
     }
 
     protected function getLocalName(): string
@@ -268,7 +268,7 @@ class UserEventsTopic extends KafkaesqueTopic implements IsProducible, HasAvroRe
 {
     public function getProducer(): KafkaesqueProducer
     {
-        return resolve(UserEventsProducer::class);
+        return new UserEventsProducer();
     }
 
     public function getRegistry(): KafkaesqueRegistry
@@ -340,7 +340,7 @@ $schema = new UserRegisteredSchema(
 );
 
 $message = new UserRegisteredMessage($schema, key: '12345');
-$topic = resolve(UserEventsTopic::class);
+$topic = new UserEventsTopic();
 $topic->produce($message); // Produces message on specific topic
 ```
 
@@ -397,7 +397,7 @@ class UserEventsTopic extends KafkaesqueTopic implements IsConsumable
 {
     public function getConsumer(): KafkaesqueConsumer
     {
-        return resolve(UserEventsConsumer::class);
+        return new UserEventsConsumer();
     }
 
     protected function getDevelopmentName(): string
@@ -437,10 +437,8 @@ class UserEventsTopic extends KafkaesqueTopic implements IsConsumable
         };
 
         if ($messageClass) {
-            resolve($messageClass, [
-                'body' => $body,
-                'key' => $message->getKey(),
-            ])->handle();
+            $handler = new $messageClass($body, $message->getKey());
+            $handler->handle();
         }
     }
 }
@@ -510,7 +508,7 @@ class ConsumeUserEvents extends Command
 
     public function handle(): void
     {
-        resolve(UserEventsTopic::class)->consume(); // Uses UserEventsConsumer to process messages
+        (new UserEventsTopic())->consume(); // Uses UserEventsConsumer to process messages
     }
 }
 ```

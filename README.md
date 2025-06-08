@@ -85,7 +85,33 @@ KAFKA_SCHEMA_REGISTRY_URL=http://localhost:8081
 
 ## Message Schemas
 
-Create message schemas using Spatie's Laravel Data. These schemas define the structure of your Kafka messages:
+Create message schemas using Spatie's Laravel Data. These schemas define the structure of your Kafka messages.
+
+### Basic Schema
+
+Start with a simple schema by extending `KafkaesqueSchema`:
+
+```php
+<?php
+
+namespace App\Kafka\Schemas;
+
+use Aryeo\Kafkaesque\Schemas\KafkaesqueSchema;
+
+class UserRegisteredSchema extends KafkaesqueSchema
+{
+    public function __construct(
+        public readonly string $userId,
+        public readonly string $email,
+        public readonly string $name,
+        public readonly \DateTimeInterface $registeredAt
+    ) {}
+}
+```
+
+### Adding Avro Support
+
+To enable Avro schema registry support, implement the `IsAvroSchema` contract and add the required methods:
 
 ```php
 <?php
@@ -120,26 +146,6 @@ class UserRegisteredSchema extends KafkaesqueSchema implements IsAvroSchema
 }
 ```
 
-For simpler schemas without Avro support, just extend `KafkaesqueSchema`:
-
-```php
-<?php
-
-namespace App\Kafka\Schemas;
-
-use Aryeo\Kafkaesque\Schemas\KafkaesqueSchema;
-
-class OrderCreatedSchema extends KafkaesqueSchema
-{
-    public function __construct(
-        public readonly string $orderId,
-        public readonly string $customerId,
-        public readonly float $total,
-        public readonly array $items
-    ) {}
-}
-```
-
 ## Producing Messages
 
 ### 1. Create a Producer
@@ -170,9 +176,58 @@ class UserEventsProducer extends KafkaesqueProducer
 }
 ```
 
-### 2. Configure Avro Registry (Optional)
+### 2. Create a Producible Topic
 
-If using Avro schemas, create a registry environment:
+Start with a basic topic that can send messages:
+
+```php
+<?php
+
+namespace App\Kafka\Topics;
+
+use Aryeo\Kafkaesque\Topics\KafkaesqueTopic;
+use Aryeo\Kafkaesque\Topics\Contracts\IsProducible;
+use App\Kafka\Producers\UserEventsProducer;
+
+class UserEventsTopic extends KafkaesqueTopic implements IsProducible
+{
+    public function getProducer(): KafkaesqueProducer
+    {
+        return resolve(UserEventsProducer::class);
+    }
+
+    protected function getLocalName(): string
+    {
+        return 'local.user-events';
+    }
+
+    protected function getDevelopmentName(): string
+    {
+        return 'dev.user-events';
+    }
+
+    protected function getStagingName(): string
+    {
+        return 'staging.user-events';
+    }
+
+    protected function getProductionName(): string
+    {
+        return 'user-events';
+    }
+
+    protected function getTestingName(): string
+    {
+        return 'test.user-events';
+    }
+}
+```
+
+### 3. Adding Avro Support to Topics
+
+If your schemas implement `IsAvroSchema`, you need to configure a registry environment and add it to your topic:
+
+**First, create a registry environment:**
 
 ```php
 <?php
@@ -195,9 +250,7 @@ class ProductionRegistryEnvironment implements IsAvroRegistryEnvironment
 }
 ```
 
-### 3. Create a Producible Topic
-
-Create a topic that can send messages:
+**Then, update your topic to implement `HasAvroRegistry`:**
 
 ```php
 <?php
@@ -225,30 +278,7 @@ class UserEventsTopic extends KafkaesqueTopic implements IsProducible, HasAvroRe
         );
     }
 
-    protected function getLocalName(): string
-    {
-        return 'local.user-events';
-    }
-
-    protected function getDevelopmentName(): string
-    {
-        return 'dev.user-events';
-    }
-
-    protected function getStagingName(): string
-    {
-        return 'staging.user-events';
-    }
-
-    protected function getProductionName(): string
-    {
-        return 'user-events';
-    }
-
-    protected function getTestingName(): string
-    {
-        return 'test.user-events';
-    }
+    // ... environment name methods remain the same
 }
 ```
 
@@ -283,7 +313,9 @@ class UserRegisteredMessage extends KafkaesqueMessage implements IsProducible
 
 ### 5. Produce the Message
 
-Send messages to your configured topics:
+Send messages to your configured topics. You have two options:
+
+**Option 1: Produce via message (sends to default topics):**
 
 ```php
 $schema = new UserRegisteredSchema(
@@ -294,7 +326,22 @@ $schema = new UserRegisteredSchema(
 );
 
 $message = new UserRegisteredMessage($schema, key: '12345');
-$message->produce(); // Sends to UserEventsTopic via UserEventsProducer
+$message->produce(); // Products message on default topics
+```
+
+**Option 2: Produce via topic (sends to specific topic):**
+
+```php
+$schema = new UserRegisteredSchema(
+    userId: '12345',
+    email: 'user@example.com',
+    name: 'John Doe',
+    registeredAt: now()
+);
+
+$message = new UserRegisteredMessage($schema, key: '12345');
+$topic = resolve(UserEventsTopic::class);
+$topic->produce($message); // Produces message on specific topic
 ```
 
 ## Consuming Messages
@@ -328,13 +375,9 @@ class UserEventsConsumer extends KafkaesqueConsumer
 }
 ```
 
-### 2. Configure Avro Registry Consumer (Optional)
+### 2. Create a Consumable Topic
 
-If consuming Avro messages, ensure your topic implements `HasAvroRegistry` (same as producing setup above).
-
-### 3. Create a Consumable Topic
-
-Create a topic that can receive and route messages:
+Start with a basic topic that can receive and route messages:
 
 ```php
 <?php
@@ -403,6 +446,10 @@ class UserEventsTopic extends KafkaesqueTopic implements IsConsumable
 }
 ```
 
+### 3. Adding Avro Support to Consumer Topics
+
+If consuming Avro messages, ensure your topic implements `HasAvroRegistry` (same as the producing setup above).
+
 ### 4. Create Consumable Messages
 
 Create message handlers that process incoming data:
@@ -433,14 +480,7 @@ class UserRegisteredHandler extends KafkaesqueMessage implements IsConsumable
             return;
         }
 
-        // Create user record
-        User::create([
-            'external_id' => $this->body->userId,
-            'email' => $this->body->email,
-            'name' => $this->body->name,
-        ]);
-
-        // Dispatch welcome email
+        // Dispatch asynchronous jobs to handle message outcomes
         SendWelcomeEmail::dispatch($this->body->email);
     }
 

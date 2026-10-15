@@ -30,7 +30,7 @@
         "php": "^8.3",
         "ext-rdkafka": "*",
         "aryeo/avro-php": "1.1.0",
-        "illuminate/contracts": "^10.45||^11.0||^12.0",
+        "illuminate/contracts": "^10.45||^11.0||^12.0||^13.0",
         "mateusjunges/laravel-kafka": "^2.3",
         "spatie/laravel-data": "^4.15",
         "spatie/laravel-package-tools": "^1.16"
@@ -39,12 +39,12 @@
         "larastan/larastan": "^2.9||^3.0",
         "laravel/pint": "^1.14",
         "nunomaduro/collision": "^8.1.1||^7.10.0",
-        "orchestra/testbench": "^10.0.0||^9.0.0||^8.22.0",
+        "orchestra/testbench": "^10.0.0||^9.0.0||^8.22.0||^11.0.0",
         "orchestra/canvas-core": ">=v8.10.1",
         "phpstan/extension-installer": "^1.3||^2.0",
         "phpstan/phpstan-deprecation-rules": "^1.1||^2.0",
         "phpstan/phpstan-phpunit": "^1.3||^2.0",
-        "phpunit/phpunit": "^12||^11||^10"
+        "phpunit/phpunit": "^12||^11||^10||^13"
     },
     "autoload": {
         "psr-4": {

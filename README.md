@@ -24,7 +24,7 @@ The package follows Laravel conventions and integrates seamlessly with your exis
 ### Requirements
 
 - PHP 8.3 or higher
-- Laravel 10.45, 11.x, or 12.x
+- Laravel 10.45, 11.x, 12.x, or 13.x
 - ext-rdkafka extension
 
 ### Install the Package

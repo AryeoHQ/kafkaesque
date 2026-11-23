@@ -29,7 +29,7 @@
     "require": {
         "php": "^8.3",
         "ext-rdkafka": "*",
-        "aryeo/avro-php": "1.1.0",
+        "aryeo/avro-php": "5.2.0",
         "illuminate/contracts": "^12.0||^13.0",
         "mateusjunges/laravel-kafka": "^2.3",
         "spatie/laravel-data": "^4.15",
